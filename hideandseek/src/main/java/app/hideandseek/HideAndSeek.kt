@@ -319,7 +319,14 @@ class HideAndSeekController(
     internal fun markFound(plan: DailyPlan) {
         val current = content ?: return
         if (progress.isFound(plan.day)) return
-        progress = progress.found(plan.day, plan.creature.id, DailyPlanner.previousHidingDay(current, plan.day))
+        // Режим демо: перепрятка считается следующим днём (см. afterFound), поэтому серия
+        // растёт с каждой находкой, а не раз в день.
+        val previous = if (demoRehide && progress.lastFoundDay == plan.day - 1) {
+            plan.day - 1
+        } else {
+            DailyPlanner.previousHidingDay(current, plan.day)
+        }
+        progress = progress.found(plan.day, plan.creature.id, previous)
         store.save(progress)
         onFound?.invoke(plan)
     }
@@ -342,7 +349,8 @@ class HideAndSeekController(
         demoSpot = pickWeighted(pool)
         val tips = current.tipsOn(now.day).map { it.text }.filter { it != now.tip }
         demoTip = if (tips.isEmpty()) now.tip else tips[demoRandom.nextInt(tips.size)]
-        progress = progress.copy(lastFoundDay = null)
+        // Как будто нашли «вчера»: сегодня можно найти снова, и серия продолжится.
+        progress = progress.copy(lastFoundDay = now.day - 1)
         store.save(progress)
     }
 
@@ -372,9 +380,16 @@ class HideAndSeekController(
     /** Demo: let today's creature hide again. */
     fun resetToday() {
         if (progress.lastFoundDay == today) {
-            progress = progress.copy(lastFoundDay = null)
+            // В режиме демо серия при этом не рвётся: как будто нашли вчера.
+            progress = progress.copy(lastFoundDay = if (demoRehide) today - 1 else null)
             store.save(progress)
         }
+    }
+
+    /** Demo: начать серию находок заново (сами находки и коллекция остаются). */
+    fun resetStreak() {
+        progress = progress.copy(streak = 0)
+        store.save(progress)
     }
 
     /** Demo: forget all progress. */
