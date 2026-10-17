@@ -153,7 +153,7 @@ data class Look(
 /** Texts support {name}, {streak}, {streakDays}, {total}. */
 data class Texts(
     val foundTitle: String = "Нашёл!",
-    val foundBody: String = "{name} прятался именно здесь. Завтра спрячется в другом месте.",
+    val foundBody: String = "Завтра {name} спрячется в другом месте.",
     val streak: String = "Ты находишь меня {streakDays} подряд!",
     val tipTitle: String = "Совет дня",
     val accessibilityLabel: String = "Здесь кто-то прячется. Нажми, чтобы найти",
