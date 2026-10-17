@@ -73,7 +73,7 @@ fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: 
         )
         DevLine(
             "Прячется",
-            plan?.let { "${it.creature.name} → ${screenName(it.spot.id)} (${it.spot.id})" } ?: "сегодня никто не прячется",
+            plan?.let { "${screenName(it.spot.id)} → ${spotName(it.spot.id)}" } ?: "сегодня никто не прячется",
         )
         DevLine("Найден", if (hideAndSeek.isFoundToday) "да" else "нет")
         DevLine("Контент", content?.let { "v${it.version}, ${hideAndSeek.contentOrigin}" } ?: "загружается…")
@@ -97,9 +97,25 @@ fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: 
                 if (hideAndSeek.demoRehide) "Перепрятка: вкл" else "Перепрятка: выкл",
                 Modifier.weight(1f),
             ) { hideAndSeek.demoRehide = !hideAndSeek.demoRehide }
-            DevButton("Сбросить находки", Modifier.weight(1f)) { hideAndSeek.resetAll() }
+            DevButton("Сбросить серию", Modifier.weight(1f)) { hideAndSeek.resetStreak() }
         }
+        Spacer(Modifier.height(8.dp))
+        DevButton("Сбросить все находки", Modifier.fillMaxWidth()) { hideAndSeek.resetAll() }
     }
+}
+
+/** Понятное название места для панели; для незнакомых id — сам id. */
+private fun spotName(spotId: String): String = when (spotId) {
+    "main.card" -> "карта"
+    "main.banner" -> "баннер «Узнай свои сильные стороны»"
+    "piggy.goal" -> "копилка с целью (накопил на мечту)"
+    "piggy.pig" -> "свинка"
+    "piggy.archive" -> "строка «Архив»"
+    "tasks.start_card" -> "карточка «Начни делать дела»"
+    "content.hero" -> "карточка «Агент Kids» в карусели"
+    "content.audio" -> "аудио «Три кота три хвоста»"
+    "content.algoritmika_mascot" -> "маскот «Алгоритмики»"
+    else -> spotId
 }
 
 /** Вкладка по началу id места (main.banner → «Главный»). */
