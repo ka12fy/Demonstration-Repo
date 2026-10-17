@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -303,6 +304,40 @@ class FoxScreenshotTest {
         compose.onNodeWithText("Нашёл!").assertExists()
         val top = compose.onNodeWithText("Нашёл!").getUnclippedBoundsInRoot().top
         assertTrue("карточка на $top", top < 100.dp)
+    }
+
+    /** Демо: серия растёт с каждой находкой, строка о ней — в плашке, на 3 — праздник. */
+    @Test
+    fun streakGrowsWithEveryFind() {
+        val json = contentWith(
+            listOf(Spot("main.banner", align = 0.85), Spot("main.card", align = 0.75)),
+            spotOfTheDay = "main.banner",
+        )
+        val controller = show(Tab.Main, json)
+        compose.runOnIdle { controller.demoRehide = true }
+        fun findAndRead(): Int {
+            find()
+            advance(1_000)
+            return controller.progress.streak
+        }
+        assertEquals(1, findAndRead())
+        compose.onAllNodesWithText("подряд", substring = true).fetchSemanticsNodes().let {
+            assertTrue("со первой находки строки о серии нет", it.isEmpty())
+        }
+        swipeCardUp()
+        advance(3_000)
+        assertEquals(2, findAndRead())
+        compose.onNodeWithText("Ты находишь меня 2 дня подряд!", substring = true).assertExists()
+        capture("31_streak_2")
+        swipeCardUp()
+        advance(3_000)
+        find()
+        advance(800) // звёздочки из огонька в разгаре
+        capture("32_streak_3_milestone")
+        assertEquals(3, controller.progress.streak)
+        compose.onNodeWithText("Ты находишь меня 3 дня подряд!", substring = true).assertExists()
+        compose.runOnIdle { controller.resetStreak() }
+        assertEquals(0, controller.progress.streak)
     }
 
     @Test
