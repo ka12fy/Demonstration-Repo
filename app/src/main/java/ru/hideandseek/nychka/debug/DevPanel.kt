@@ -75,6 +75,16 @@ fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: 
             "Прячется",
             plan?.let { "${screenName(it.spot.id)} → ${spotName(it.spot.id)}" } ?: "сегодня никто не прячется",
         )
+        val script = hideAndSeek.demoScriptSpots
+        DevLine(
+            "Сценарий",
+            when {
+                script.isEmpty() -> "нет, места случайные"
+                !hideAndSeek.demoRehide -> "включится с перепряткой"
+                else -> "место ${hideAndSeek.demoStep % script.size + 1} из ${script.size}" +
+                    " → дальше ${spotName(script[(hideAndSeek.demoStep + 1) % script.size].id)}"
+            },
+        )
         DevLine("Найден", if (hideAndSeek.isFoundToday) "да" else "нет")
         DevLine("Контент", content?.let { "v${it.version}, ${hideAndSeek.contentOrigin}" } ?: "загружается…")
         DevLine("Находок", "${progress.totalFound}, серия ${progress.streak}, коллекция ${progress.collection.size}")
@@ -83,6 +93,11 @@ fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DevButton("◀ день", Modifier.weight(1f)) { hideAndSeek.dayShift = shift - 1 }
             DevButton("день ▶", Modifier.weight(1f)) { hideAndSeek.dayShift = shift + 1 }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DevButton("◀ место", Modifier.weight(1f)) { hideAndSeek.demoStepBy(-1) }
+            DevButton("место ▶", Modifier.weight(1f)) { hideAndSeek.demoStepBy(1) }
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

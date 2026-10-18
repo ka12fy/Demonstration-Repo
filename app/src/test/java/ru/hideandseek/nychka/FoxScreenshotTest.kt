@@ -63,7 +63,7 @@ class FoxScreenshotTest {
     }
 
     /** Встроенный контент, но только Нычка, только эти места и (если задано) место дня. */
-    private fun contentWith(spots: List<Spot>, spotOfTheDay: String? = null): String {
+    private fun contentWith(spots: List<Spot>, spotOfTheDay: String? = null, demoScript: List<String>? = null): String {
         val json = bundledContent()
         val creatures = json.getJSONArray("creatures")
         val nychka = (0 until creatures.length()).map { creatures.getJSONObject(it) }.first { it.getString("id") == "nychka" }
@@ -81,6 +81,10 @@ class FoxScreenshotTest {
             },
         )
         json.getJSONObject("look").put("appearDelayMs", 0)
+        json.remove("demo")
+        if (demoScript != null) {
+            json.put("demo", JSONObject().put("script", JSONArray().apply { demoScript.forEach { put(it) } }))
+        }
         return json.toString()
     }
 
@@ -338,6 +342,30 @@ class FoxScreenshotTest {
         compose.onNodeWithText("Ты находишь меня 3 дня подряд!", substring = true).assertExists()
         compose.runOnIdle { controller.resetStreak() }
         assertEquals(0, controller.progress.streak)
+    }
+
+    /** Демо: сценарий из контента решает, где лиса: по порядку, а из панели — к следующему месту. */
+    @Test
+    fun scriptDecidesWhereFoxHides() {
+        val json = contentWith(
+            listOf(Spot("main.banner", align = 0.85), Spot("main.card", align = 0.75), Spot("piggy.goal", align = 0.85)),
+            spotOfTheDay = "piggy.goal",
+            demoScript = listOf("main.card", "main.banner", "piggy.goal"),
+        )
+        val controller = show(Tab.Main, json)
+        compose.runOnIdle { controller.demoRehide = true }
+        assertEquals("main.card", controller.plan?.spot?.id) // сценарий важнее места дня
+        advance(2_500)
+        find()
+        advance(500)
+        swipeCardUp()
+        advance(3_000)
+        assertEquals("main.banner", controller.plan?.spot?.id)
+        assertTrue("лиса снова выглядывает", foxShown())
+        compose.runOnIdle { controller.demoStepBy(1) }
+        assertEquals("piggy.goal", controller.plan?.spot?.id)
+        compose.runOnIdle { controller.demoStepBy(1) }
+        assertEquals("main.card", controller.plan?.spot?.id) // по кругу
     }
 
     @Test
