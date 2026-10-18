@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,7 +15,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.hideandseek.LocalHideAndSeek
+import kotlinx.coroutines.delay
 import ru.hideandseek.nychka.debug.DevPanel
+import ru.hideandseek.nychka.heist.BalanceHeist
+import ru.hideandseek.nychka.heist.BalanceHeistLayer
+import ru.hideandseek.nychka.heist.LocalBalanceHeist
 import ru.hideandseek.nychka.hidespots.HideSpotDebugOverlay
 import ru.hideandseek.nychka.hidespots.HideSpotRegistry
 import ru.hideandseek.nychka.hidespots.LocalHideSpotRegistry
@@ -32,13 +37,26 @@ import ru.hideandseek.nychka.ui.theme.KidsColors
  * Долгое нажатие на лапку: рамки мест + панель демо (если корень обёрнут в HideAndSeekHost).
  */
 @Composable
-fun AppRoot(initialTab: Tab = Tab.Main, initialDebug: Boolean = false) {
+fun AppRoot(
+    initialTab: Tab = Tab.Main,
+    initialDebug: Boolean = false,
+    heist: BalanceHeist = remember { BalanceHeist() },
+    /** Через сколько мс на «Главном» после запуска сам начнётся прикол «Нычка ворует баланс»; 0 — только из панели демо. */
+    heistAutoStartMs: Long = 0L,
+) {
     val registry = remember { HideSpotRegistry() }
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     var debug by rememberSaveable { mutableStateOf(initialDebug) }
     val hideAndSeek = LocalHideAndSeek.current
 
-    CompositionLocalProvider(LocalHideSpotRegistry provides registry) {
+    LaunchedEffect(heistAutoStartMs) {
+        if (heistAutoStartMs > 0) {
+            delay(heistAutoStartMs)
+            if (tab == Tab.Main && !heist.running) heist.start()
+        }
+    }
+
+    CompositionLocalProvider(LocalHideSpotRegistry provides registry, LocalBalanceHeist provides heist) {
         Box(Modifier.fillMaxSize().background(KidsColors.Page)) {
             when (tab) {
                 Tab.Main -> MainScreen()
@@ -46,11 +64,16 @@ fun AppRoot(initialTab: Tab = Tab.Main, initialDebug: Boolean = false) {
                 Tab.Content -> ContentScreen()
                 Tab.Piggy -> PiggyScreen()
             }
+            // Прикол «Нычка ворует баланс» — поверх «Главного», под таб-баром.
+            if (tab == Tab.Main) BalanceHeistLayer(heist, registry)
             KidsTabBar(
                 selected = tab,
                 onSelect = {
                     // Сменили вкладку — карточка «Нашёл!» убирается.
-                    if (it != tab) hideAndSeek?.onScreenChanged()
+                    if (it != tab) {
+                        hideAndSeek?.onScreenChanged()
+                        heist.stop()
+                    }
                     tab = it
                 },
                 onPawLongPress = { debug = !debug },
@@ -62,6 +85,11 @@ fun AppRoot(initialTab: Tab = Tab.Main, initialDebug: Boolean = false) {
                     DevPanel(
                         hideAndSeek = hideAndSeek,
                         onClose = { debug = false },
+                        onHeist = {
+                            debug = false
+                            tab = Tab.Main
+                            heist.start()
+                        },
                         modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
                     )
                 }

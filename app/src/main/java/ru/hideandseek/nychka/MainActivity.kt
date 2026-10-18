@@ -28,6 +28,13 @@ object NychkaConfig {
      * (а не ждёт завтра). Переключается и в панели демо. В настоящем приложении — false.
      */
     const val DEMO_REHIDE = true
+
+    /**
+     * Прикол «Нычка ворует баланс»: через столько мс после запуска на «Главном» Нычка крадётся к сумме
+     * на плашке баланса и пытается её утащить (один раз за запуск; ещё раз — кнопкой в панели демо).
+     * 0 — только из панели демо.
+     */
+    const val HEIST_AUTOSTART_MS = 5_000L
 }
 
 class MainActivity : ComponentActivity() {
@@ -44,7 +51,7 @@ class MainActivity : ComponentActivity() {
                 val hideAndSeek = rememberHideAndSeekController(contentUrl = NychkaConfig.CONTENT_URL)
                 LaunchedEffect(hideAndSeek) { hideAndSeek.demoRehide = NychkaConfig.DEMO_REHIDE }
                 HideAndSeekHost(hideAndSeek, Modifier.fillMaxSize()) {
-                    AppRoot()
+                    AppRoot(heistAutoStartMs = NychkaConfig.HEIST_AUTOSTART_MS)
                 }
             }
         }
