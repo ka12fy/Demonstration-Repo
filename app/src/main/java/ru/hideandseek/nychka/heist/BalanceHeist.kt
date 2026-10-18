@@ -120,7 +120,7 @@ private class HeistFrame(
 )
 
 /** Все кадры нарисованы в одном масштабе: одинаковые dp на пиксель исходника — лиса везде одного роста. */
-private const val DP_PER_SOURCE_PX = 0.088f
+private const val DP_PER_SOURCE_PX = 0.1f
 
 private fun frame(@DrawableRes res: Int, sourceHeightPx: Int, groundX: Float, groundY: Float) =
     HeistFrame(res, sourceHeightPx * DP_PER_SOURCE_PX, groundX, groundY)
@@ -137,6 +137,9 @@ private val Pull = frame(R.drawable.heist_pull, 1108, 0.548f, 0.995f)
 private val PullHard = frame(R.drawable.heist_pull_hard, 1022, 0.612f, 0.994f)
 private val Startled = frame(R.drawable.heist_startled, 1179, 0.589f, 0.995f)
 private val Flee = frame(R.drawable.heist_flee, 961, 0.433f, 0.994f)
+
+/** Высота кулаков в кадре рывка (доля картинки). */
+private const val PULL_HAND_Y = 0.56f
 
 private val AllFrames = listOf(Plot, Sneak, StepFront, StepBack, Aim, Reach, Pull, PullHard, Startled, Flee)
 
@@ -157,7 +160,7 @@ private const val STARTLED_END = SNAP_AT + 450f
 internal const val HEIST_TOTAL_MS = STARTLED_END + 700f
 
 /** Насколько сумма растягивается по ширине при stretch = 1. */
-internal const val AMOUNT_STRETCH = 0.14f
+internal const val AMOUNT_STRETCH = 0.22f
 
 /** Растяжение суммы во времени. [snapFrom] — сколько было в момент щелчка. */
 private fun stretchAt(t: Float, snapFrom: Float): Float = when {
@@ -266,8 +269,9 @@ private fun Density.stageOf(registry: HideSpotRegistry, screenWidth: Float): Sta
     val plate = registry.spots[BALANCE_SPOT]?.bounds?.takeIf { !it.isEmpty } ?: return null
     val amount = registry.spots[BALANCE_AMOUNT_SPOT]?.bounds?.takeIf { !it.isEmpty }
     val grip = Offset(amount?.right ?: (plate.left + plate.width * 0.45f), amount?.center?.y ?: plate.center.y)
-    // Ноги лисы — чуть ниже плашки: тогда её лапы как раз на уровне суммы.
-    return Stage(grip, amount?.width ?: plate.width * 0.35f, grip.y + 42.dp.toPx(), screenWidth)
+    // Ноги лисы — ниже суммы ровно настолько, чтобы в кадре рывка её кулаки были на уровне суммы.
+    val groundY = grip.y + (Pull.groundY - PULL_HAND_Y) * Pull.heightDp.dp.toPx()
+    return Stage(grip, amount?.width ?: plate.width * 0.35f, groundY, screenWidth)
 }
 
 /**
