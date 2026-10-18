@@ -130,6 +130,10 @@ private fun spotName(spotId: String): String = when (spotId) {
     "content.hero" -> "карточка «Агент Kids» в карусели"
     "content.audio" -> "аудио «Три кота три хвоста»"
     "content.algoritmika_mascot" -> "маскот «Алгоритмики»"
+    "main.edge_right" -> "правый край экрана у карт"
+    "tasks.edge_right" -> "правый край экрана у «Начни делать дела»"
+    "piggy.edge_left" -> "левый край экрана у первой копилки"
+    "content.edge_left" -> "левый край экрана у аудио"
     else -> spotId
 }
 
