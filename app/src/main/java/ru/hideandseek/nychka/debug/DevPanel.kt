@@ -32,7 +32,13 @@ import kotlinx.coroutines.launch
  * Открывается вместе с отладочными рамками долгим нажатием на лапку в таб-баре.
  */
 @Composable
-fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun DevPanel(
+    hideAndSeek: HideAndSeekController,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Запустить прикол «Нычка ворует баланс» (на «Главном»). */
+    onHeist: (() -> Unit)? = null,
+) {
     val scope = rememberCoroutineScope()
     val plan = hideAndSeek.plan
     val content = hideAndSeek.content
@@ -116,6 +122,10 @@ fun DevPanel(hideAndSeek: HideAndSeekController, onClose: () -> Unit, modifier: 
         }
         Spacer(Modifier.height(8.dp))
         DevButton("Сбросить все находки", Modifier.fillMaxWidth()) { hideAndSeek.resetAll() }
+        if (onHeist != null) {
+            Spacer(Modifier.height(8.dp))
+            DevButton("Нычка ворует баланс ▶", Modifier.fillMaxWidth(), onClick = onHeist)
+        }
     }
 }
 
