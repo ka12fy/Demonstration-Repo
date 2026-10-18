@@ -372,6 +372,31 @@ class FoxScreenshotTest {
         assertEquals("main.card", controller.plan?.spot?.id) // по кругу
     }
 
+    /** Сценарий показа: первое место → кража баланса → следующее место; и всё заново из панели. */
+    @Test
+    fun scriptWithHeistStep() {
+        val json = contentWith(
+            listOf(Spot("main.banner", align = 0.85), Spot("main.card", align = 0.75)),
+            demoScript = listOf("main.banner", "heist", "main.card"),
+        )
+        val controller = show(Tab.Main, json)
+        compose.runOnIdle { controller.demoRehide = true }
+        advance(2_500)
+        assertEquals("main.banner", controller.plan?.spot?.id)
+        find()
+        advance(500)
+        swipeCardUp()
+        advance(3_000)
+        assertEquals("heist", controller.demoAction) // лиса не прячется, идёт кража
+        assertEquals(null, controller.plan)
+        capture("35_script_heist")
+        advance(ru.hideandseek.nychka.heist.HEIST_TOTAL_MS.toLong() + 2_000)
+        assertEquals(null, controller.demoAction)
+        assertEquals("main.card", controller.plan?.spot?.id)
+        compose.runOnIdle { controller.restartDemo() }
+        assertEquals("main.banner", controller.plan?.spot?.id)
+    }
+
     /** Место у правого края экрана: лиса выглядывает из-за края и после находки убегает влево. */
     @Test
     fun screenEdgeRightRunsLeft() {

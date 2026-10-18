@@ -98,6 +98,9 @@ class BalanceHeist {
     }
 }
 
+/** Шаг сценария показа (`"demo": { "script": [...] }` в контенте), на котором Нычка ворует баланс. */
+const val HEIST_STEP = "heist"
+
 /** Плашка баланса читает отсюда, насколько растянуть сумму. */
 val LocalBalanceHeist = staticCompositionLocalOf<BalanceHeist?> { null }
 

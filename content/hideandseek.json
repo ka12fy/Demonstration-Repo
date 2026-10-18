@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "enabled": true,
   "timeZone": "Europe/Moscow",
   "salt": "nychka-2026",
@@ -77,7 +77,7 @@
   ],
 
   "demo": {
-    "script": ["main.banner", "piggy.pig", "tasks.start_card", "content.hero", "main.card", "piggy.goal"],
+    "script": ["main.banner", "heist", "piggy.pig", "tasks.start_card", "content.hero", "main.edge_right", "piggy.goal"],
     "loop": true
   },
 

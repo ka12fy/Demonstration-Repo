@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 import ru.hideandseek.nychka.debug.DevPanel
 import ru.hideandseek.nychka.heist.BalanceHeist
 import ru.hideandseek.nychka.heist.BalanceHeistLayer
+import ru.hideandseek.nychka.heist.HEIST_STEP
 import ru.hideandseek.nychka.heist.LocalBalanceHeist
 import ru.hideandseek.nychka.hidespots.HideSpotDebugOverlay
 import ru.hideandseek.nychka.hidespots.HideSpotRegistry
@@ -56,6 +57,27 @@ fun AppRoot(
         }
     }
 
+    // Сценарий показа: шаг "heist" — кража баланса. Как только до него дошли и ребёнок на «Главном»,
+    // Нычка крадётся к балансу; когда прикол закончился (или его прервали сменой вкладки),
+    // сценарий идёт дальше.
+    LaunchedEffect(hideAndSeek) { hideAndSeek?.demoActions = setOf(HEIST_STEP) }
+    val heistStepNow = hideAndSeek?.demoAction == HEIST_STEP
+    LaunchedEffect(heistStepNow, tab) {
+        if (heistStepNow && tab == Tab.Main && !heist.running) {
+            delay(1_200L)
+            if (!heist.running) heist.start()
+        }
+    }
+    var heistWasRunning by remember { mutableStateOf(false) }
+    LaunchedEffect(heist.running) {
+        if (heist.running) {
+            heistWasRunning = true
+        } else if (heistWasRunning) {
+            heistWasRunning = false
+            if (hideAndSeek?.demoAction == HEIST_STEP) hideAndSeek?.completeDemoAction()
+        }
+    }
+
     CompositionLocalProvider(LocalHideSpotRegistry provides registry, LocalBalanceHeist provides heist) {
         Box(Modifier.fillMaxSize().background(KidsColors.Page)) {
             when (tab) {
@@ -89,6 +111,10 @@ fun AppRoot(
                             debug = false
                             tab = Tab.Main
                             heist.start()
+                        },
+                        onRestart = {
+                            heist.stop()
+                            hideAndSeek.restartDemo()
                         },
                         modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
                     )

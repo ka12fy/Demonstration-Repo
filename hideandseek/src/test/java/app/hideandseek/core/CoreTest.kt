@@ -187,7 +187,8 @@ class CoreTest {
             .firstOrNull { it.exists() } ?: return
         val sample = ContentParser.parse(file.readText())
         assertTrue(sample.demoScript.isNotEmpty())
-        for (id in sample.demoScript) assertNotNull(id, sample.spot(id))
+        // "heist" — шаг-действие приложения (кража баланса), остальное — места из контента.
+        for (id in sample.demoScript) if (id != "heist") assertNotNull(id, sample.spot(id))
     }
 
     @Test
