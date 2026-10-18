@@ -71,6 +71,11 @@
     { "text": "Подарочные деньги на Новый год — отличный старт для копилки.", "from": "2026-12-15", "to": "2027-01-15" }
   ],
 
+  "demo": {
+    "script": ["main.banner", "piggy.pig", "tasks.start_card", "content.hero", "main.card", "piggy.goal"],
+    "loop": true
+  },
+
   "specialDays": [
     { "date": "2026-10-18", "creature": "nychka", "spot": "main.banner" },
     { "date": "2026-10-19", "creature": "nychka", "spot": "piggy.goal" },

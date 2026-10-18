@@ -229,6 +229,29 @@ class HideAndSeekController(
     /** Режим демо: место, куда персонаж перепрятался после последней находки (null — место дня). */
     private var demoSpot: SpotDef? by mutableStateOf(null)
 
+    /** Режим демо: шаг по сценарию из контента (`demo.script`). */
+    private var demoStepState: Int by mutableIntStateOf(0)
+
+    /** Номер текущего места в сценарии демо (с нуля). */
+    val demoStep: Int get() = demoStepState
+
+    /** Места сценария демо, которые есть в контенте (неизвестные id пропускаются). */
+    val demoScriptSpots: List<SpotDef>
+        get() = content?.let { c -> c.demoScript.mapNotNull(c::spot) } ?: emptyList()
+
+    /** Место по сценарию демо сейчас; null — сценария нет, он выключен или закончился. */
+    private fun scriptSpot(): SpotDef? {
+        if (!demoRehide) return null
+        val spots = demoScriptSpots
+        if (spots.isEmpty()) return null
+        val step = demoStepState
+        return when {
+            step < spots.size -> spots[step]
+            content?.demoLoop != false -> spots[step % spots.size]
+            else -> null
+        }
+    }
+
     /** Режим демо: совет для следующей находки — каждый раз другой, а не один на весь день. */
     private var demoTip: String? by mutableStateOf(null)
 
@@ -249,7 +272,8 @@ class HideAndSeekController(
 
     private val planState = derivedStateOf {
         val base = content?.let { DailyPlanner.plan(it, today) }
-        val moved = demoSpot
+        // Режим демо: сценарий из контента важнее случайной перепрятки и места дня.
+        val moved = scriptSpot() ?: demoSpot
         if (base != null && moved != null) base.copy(spot = moved, tip = demoTip ?: base.tip) else base
     }
 
@@ -342,11 +366,16 @@ class HideAndSeekController(
         val current = content ?: return
         val now = plan ?: return
         if (!progress.isFound(now.day)) return
-        val others = current.spotsOn(now.day).filter { it.id != now.spot.id }
-        if (others.isEmpty()) return
-        val screen = screenOf(now.spot.id)
-        val pool = others.filter { screenOf(it.id) != screen }.ifEmpty { others }
-        demoSpot = pickWeighted(pool)
+        // По сценарию — следующее место из списка. Сценария нет (или он кончился) — случайное.
+        val byScript = scriptSpot() != null
+        if (byScript) demoStepState++
+        if (scriptSpot() == null) {
+            val others = current.spotsOn(now.day).filter { it.id != now.spot.id }
+            if (others.isEmpty()) return
+            val screen = screenOf(now.spot.id)
+            val pool = others.filter { screenOf(it.id) != screen }.ifEmpty { others }
+            demoSpot = pickWeighted(pool)
+        }
         val tips = current.tipsOn(now.day).map { it.text }.filter { it != now.tip }
         demoTip = if (tips.isEmpty()) now.tip else tips[demoRandom.nextInt(tips.size)]
         // Как будто нашли «вчера»: сегодня можно найти снова, и серия продолжится.
@@ -382,6 +411,27 @@ class HideAndSeekController(
         if (progress.lastFoundDay == today) {
             // В режиме демо серия при этом не рвётся: как будто нашли вчера.
             progress = progress.copy(lastFoundDay = if (demoRehide) today - 1 else null)
+            store.save(progress)
+        }
+    }
+
+    /**
+     * Demo (панель): перейти к соседнему месту — по сценарию, если он есть и включена перепрятка,
+     * иначе по всем местам дня. Если лису сегодня уже нашли, она прячется снова.
+     */
+    fun demoStepBy(delta: Int) {
+        val current = content ?: return
+        val script = demoScriptSpots
+        if (demoRehide && script.isNotEmpty()) {
+            demoStepState = (demoStepState + delta).mod(script.size)
+        } else {
+            val all = current.spotsOn(today)
+            if (all.isEmpty()) return
+            val index = all.indexOfFirst { it.id == plan?.spot?.id }.coerceAtLeast(0)
+            demoSpot = all[(index + delta).mod(all.size)]
+        }
+        if (progress.isFound(today)) {
+            progress = progress.copy(lastFoundDay = today - 1)
             store.save(progress)
         }
     }

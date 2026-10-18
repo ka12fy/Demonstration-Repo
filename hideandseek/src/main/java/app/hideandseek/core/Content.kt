@@ -173,6 +173,13 @@ data class HideAndSeekContent(
     val spots: List<SpotDef> = emptyList(),
     val tips: List<TipDef> = emptyList(),
     val specialDays: List<SpecialDay> = emptyList(),
+    /**
+     * Сценарий для демо: id мест по порядку. В режиме «Перепрятка» персонаж прячется сначала
+     * в первом, после каждой находки — в следующем. Пусто — места выбираются случайно.
+     */
+    val demoScript: List<String> = emptyList(),
+    /** Дойдя до конца сценария, начать сначала (иначе дальше — случайные места). */
+    val demoLoop: Boolean = true,
     val texts: Texts = Texts(),
 ) {
     fun creature(id: String): CreatureDef? = creatures.firstOrNull { it.id == id }
@@ -199,6 +206,7 @@ object ContentParser {
         val hours = schedule.obj("hours") ?: emptyMap()
         val look = root.obj("look") ?: emptyMap()
         val texts = root.obj("texts") ?: emptyMap()
+        val demo = root.obj("demo") ?: emptyMap()
         val defaultTexts = Texts()
         val defaultLook = Look()
 
@@ -229,6 +237,8 @@ object ContentParser {
             spots = root.objects("spots").mapNotNull(::parseSpot),
             tips = root.array("tips").mapNotNull(::parseTip),
             specialDays = root.objects("specialDays").mapNotNull(::parseSpecialDay),
+            demoScript = demo.array("script").mapNotNull { (it as? String)?.trim()?.takeIf { id -> id.isNotEmpty() } },
+            demoLoop = demo.boolean("loop") ?: true,
             texts = Texts(
                 foundTitle = texts.string("foundTitle") ?: defaultTexts.foundTitle,
                 foundBody = texts.string("foundBody") ?: defaultTexts.foundBody,
