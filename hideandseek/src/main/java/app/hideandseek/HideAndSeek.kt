@@ -235,21 +235,56 @@ class HideAndSeekController(
     /** Номер текущего места в сценарии демо (с нуля). */
     val demoStep: Int get() = demoStepState
 
-    /** Места сценария демо, которые есть в контенте (неизвестные id пропускаются). */
+    /**
+     * Шаги сценария демо, которые не места, а действия приложения (например, `"heist"` — кража баланса).
+     * Их задаёт приложение; пока идёт такой шаг, лиса не прячется, а приложение по окончании
+     * действия вызывает [completeDemoAction].
+     */
+    var demoActions: Set<String> by mutableStateOf(emptySet())
+
+    /** Шаги сценария демо: места из контента и действия из [demoActions] (неизвестные id пропускаются). */
+    val demoScriptSteps: List<String>
+        get() = content?.let { c -> c.demoScript.filter { c.spot(it) != null || it in demoActions } } ?: emptyList()
+
+    /** Места сценария демо, которые есть в контенте. */
     val demoScriptSpots: List<SpotDef>
         get() = content?.let { c -> c.demoScript.mapNotNull(c::spot) } ?: emptyList()
 
-    /** Место по сценарию демо сейчас; null — сценария нет, он выключен или закончился. */
-    private fun scriptSpot(): SpotDef? {
+    /** Текущий шаг сценария демо; null — сценария нет, он выключен или закончился. */
+    private fun scriptStep(): String? {
         if (!demoRehide) return null
-        val spots = demoScriptSpots
-        if (spots.isEmpty()) return null
+        val steps = demoScriptSteps
+        if (steps.isEmpty()) return null
         val step = demoStepState
         return when {
-            step < spots.size -> spots[step]
-            content?.demoLoop != false -> spots[step % spots.size]
+            step < steps.size -> steps[step]
+            content?.demoLoop != false -> steps[step % steps.size]
             else -> null
         }
+    }
+
+    /** Место по сценарию демо сейчас; null — сейчас не место (нет сценария или идёт действие). */
+    private fun scriptSpot(): SpotDef? = scriptStep()?.let { content?.spot(it) }
+
+    /** Текущий шаг сценария — действие приложения (например, `"heist"`), а не место. */
+    val demoAction: String?
+        get() = scriptStep()?.takeIf { content?.spot(it) == null }
+
+    /** Приложение закончило действие сценария — дальше следующий шаг. */
+    fun completeDemoAction() {
+        if (demoAction != null) demoStepState++
+    }
+
+    /** Начать сценарий демо заново: с первого шага и с новой серией (находки и коллекция остаются). */
+    fun restartDemo() {
+        demoStepState = 0
+        demoSpot = null
+        demoTip = null
+        progress = progress.copy(
+            streak = 0,
+            lastFoundDay = if (progress.isFound(today)) today - 1 else progress.lastFoundDay,
+        )
+        store.save(progress)
     }
 
     /** Режим демо: совет для следующей находки — каждый раз другой, а не один на весь день. */
@@ -273,8 +308,14 @@ class HideAndSeekController(
     private val planState = derivedStateOf {
         val base = content?.let { DailyPlanner.plan(it, today) }
         // Режим демо: сценарий из контента важнее случайной перепрятки и места дня.
+        // Пока идёт шаг-действие (кража баланса), лиса не прячется.
         val moved = scriptSpot() ?: demoSpot
-        if (base != null && moved != null) base.copy(spot = moved, tip = demoTip ?: base.tip) else base
+        when {
+            base == null -> null
+            demoAction != null -> null
+            moved != null -> base.copy(spot = moved, tip = demoTip ?: base.tip)
+            else -> base
+        }
     }
 
     /** Who hides today and where; null when nobody hides today. */
@@ -369,7 +410,7 @@ class HideAndSeekController(
         // По сценарию — следующее место из списка. Сценария нет (или он кончился) — случайное.
         val byScript = scriptSpot() != null
         if (byScript) demoStepState++
-        if (scriptSpot() == null) {
+        if (scriptSpot() == null && demoAction == null) {
             val others = current.spotsOn(now.day).filter { it.id != now.spot.id }
             if (others.isEmpty()) return
             val screen = screenOf(now.spot.id)
@@ -421,7 +462,7 @@ class HideAndSeekController(
      */
     fun demoStepBy(delta: Int) {
         val current = content ?: return
-        val script = demoScriptSpots
+        val script = demoScriptSteps
         if (demoRehide && script.isNotEmpty()) {
             demoStepState = (demoStepState + delta).mod(script.size)
         } else {
